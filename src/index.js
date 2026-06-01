@@ -69,6 +69,61 @@ export function buildReceiptVerificationResponse({
   return response;
 }
 
+export function buildStateBridgeSummary({
+  event,
+  analysis,
+  receipt,
+  run,
+  normalizedRecord,
+  conversionRecord,
+  bridgeType = "state_stack_conversion"
+}) {
+  const sourceSystem = event?.source || conversionRecord?.source_system || "mock";
+  const sourceEventId = event?.event_id || null;
+  const sourceAnalysisId = analysis?.analysis_id || null;
+  const normalizedRecordType = normalizedRecord?.record_type || null;
+  const normalizedSubjectId =
+    normalizedRecord?.subject_id ||
+    normalizedRecord?.entity_id ||
+    normalizedRecord?.message_id ||
+    normalizedRecord?.sensor_id ||
+    normalizedRecord?.command_id ||
+    normalizedRecord?.resource_type ||
+    normalizedRecord?.transition_id ||
+    null;
+  const normalizedRecordHash = normalizedRecord ? hashPayload(normalizedRecord) : null;
+  const conversionRecordHash = conversionRecord ? hashPayload(conversionRecord) : null;
+  const issuedAt = receipt?.timestamp || conversionRecord?.ingested_at || run?.completed_at || null;
+  const bridgeId = `bridge_${hashPayload({
+    bridge_type: bridgeType,
+    source_system: sourceSystem,
+    source_event_id: sourceEventId,
+    source_analysis_id: sourceAnalysisId,
+    run_id: run?.run_id || null,
+    normalized_record_hash: normalizedRecordHash,
+    conversion_record_hash: conversionRecordHash,
+    receipt_id: receipt?.receipt_id || null,
+    issued_at: issuedAt
+  }).slice(0, 16)}`;
+
+  return {
+    bridge_id: bridgeId,
+    bridge_type: bridgeType,
+    source_system: sourceSystem,
+    source_event_id: sourceEventId,
+    source_analysis_id: sourceAnalysisId,
+    run_id: run?.run_id || null,
+    normalized_record_type: normalizedRecordType,
+    normalized_subject_id: normalizedSubjectId,
+    normalized_record_hash: normalizedRecordHash,
+    conversion_record_hash: conversionRecordHash,
+    receipt_id: receipt?.receipt_id || null,
+    conversion_rule: conversionRecord?.conversion_rule || null,
+    issued_at: issuedAt,
+    status: receipt?.verification_status || "issued"
+  };
+}
+
 export function toStateEntityRecord(event, options = {}) {
   return {
     record_type: "entity",
@@ -159,9 +214,18 @@ export function buildStateBridgeArtifact({ event, analysis, receipt, run }) {
   };
 
   const recordHash = hashPayload(conversionRecord);
+  const summary = buildStateBridgeSummary({
+    event,
+    analysis,
+    receipt,
+    run,
+    normalizedRecord,
+    conversionRecord
+  });
 
   return {
     bridge_type: "state_stack_conversion",
+    summary,
     normalized_record: normalizedRecord,
     conversion_record: conversionRecord,
     receipt: {

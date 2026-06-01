@@ -136,6 +136,8 @@ test("builds a bridge artifact", () => {
   });
 
   assert.equal(artifact.bridge_type, "state_stack_conversion");
+  assert.equal(artifact.summary.bridge_type, "state_stack_conversion");
+  assert.equal(artifact.summary.source_event_id, "evt_1");
   assert.equal(artifact.conversion_record.record_type, "conversion");
   assert.equal(artifact.receipt.record_type, "receipt");
 });
