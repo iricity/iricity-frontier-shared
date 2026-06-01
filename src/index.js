@@ -22,6 +22,18 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+export function canonicalReceiptPayload(receipt) {
+  return {
+    receipt_id: receipt.receipt_id,
+    event_id: receipt.event_id,
+    action: receipt.action,
+    payload_hash: receipt.payload_hash,
+    prev_receipt_hash: receipt.prev_receipt_hash,
+    timestamp: receipt.timestamp,
+    status: receipt.status
+  };
+}
+
 export function toStateEntityRecord(event, options = {}) {
   return {
     record_type: "entity",

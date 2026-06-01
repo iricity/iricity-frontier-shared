@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   CANONICAL_STATE_RECORD_TYPES,
+  canonicalReceiptPayload,
   hashPayload,
   normalizeSpaceEventToStateRecord,
   buildStateBridgeArtifact
@@ -18,6 +19,29 @@ test("hashPayload is deterministic for structured input", () => {
 
   assert.equal(a, b);
   assert.match(a, /^sha256:/);
+});
+
+test("canonicalReceiptPayload preserves the verification fields", () => {
+  const payload = canonicalReceiptPayload({
+    receipt_id: "rcp_1",
+    event_id: "evt_1",
+    action: "process",
+    payload_hash: "sha256:abc",
+    prev_receipt_hash: "sha256:def",
+    timestamp: "2026-01-01T00:00:00Z",
+    status: "issued",
+    extra: "ignored"
+  });
+
+  assert.deepEqual(payload, {
+    receipt_id: "rcp_1",
+    event_id: "evt_1",
+    action: "process",
+    payload_hash: "sha256:abc",
+    prev_receipt_hash: "sha256:def",
+    timestamp: "2026-01-01T00:00:00Z",
+    status: "issued"
+  });
 });
 
 test("normalizes a space event into a state record", () => {
