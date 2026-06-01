@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   CANONICAL_STATE_RECORD_TYPES,
+  hashPayload,
   normalizeSpaceEventToStateRecord,
   buildStateBridgeArtifact
 } from "../src/index.js";
@@ -9,6 +10,14 @@ import {
 test("exposes canonical state record types", () => {
   assert.ok(CANONICAL_STATE_RECORD_TYPES.includes("entity"));
   assert.ok(CANONICAL_STATE_RECORD_TYPES.includes("receipt"));
+});
+
+test("hashPayload is deterministic for structured input", () => {
+  const a = hashPayload({ b: 2, a: 1 });
+  const b = hashPayload({ a: 1, b: 2 });
+
+  assert.equal(a, b);
+  assert.match(a, /^sha256:/);
 });
 
 test("normalizes a space event into a state record", () => {
@@ -43,4 +52,3 @@ test("builds a bridge artifact", () => {
   assert.equal(artifact.conversion_record.record_type, "conversion");
   assert.equal(artifact.receipt.record_type, "receipt");
 });
-

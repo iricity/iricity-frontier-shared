@@ -1,4 +1,7 @@
-import { createHash } from "node:crypto";
+import { hashPayload } from './utils/hash.js';
+
+export { canonicalJson } from './utils/canonicalJson.js';
+export { sha256Hex, hashPayload, hashRecord } from './utils/hash.js';
 
 export const CANONICAL_STATE_RECORD_TYPES = [
   "entity",
@@ -19,11 +22,6 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function sha256Hex(value) {
-  const text = typeof value === "string" ? value : JSON.stringify(value);
-  return `sha256:${createHash("sha256").update(text).digest("hex")}`;
-}
-
 export function toStateEntityRecord(event, options = {}) {
   return {
     record_type: "entity",
@@ -32,7 +30,7 @@ export function toStateEntityRecord(event, options = {}) {
     controller_id: options.controller_id || event.source || "mock",
     status: event.status || "processed",
     created_at: event.timestamp || nowIso(),
-    metadata_hash: options.metadata_hash || sha256Hex(event.payload ?? event)
+    metadata_hash: options.metadata_hash || hashPayload(event.payload ?? event)
   };
 }
 
@@ -73,7 +71,7 @@ export function toStateCommunicationRecord(event, options = {}) {
     message_id: options.message_id || event.event_id,
     source_node: options.source_node || event.source || "mock",
     destination_node: options.destination_node || "unknown",
-    payload_hash: options.payload_hash || sha256Hex(event.payload ?? event),
+    payload_hash: options.payload_hash || hashPayload(event.payload ?? event),
     route: options.route || "space-stack",
     timestamp: event.timestamp || nowIso(),
     delivery_status: options.delivery_status || "recorded",
@@ -95,17 +93,17 @@ export function buildStateBridgeArtifact({ event, analysis, receipt, run }) {
     kind: event?.event_type || "entity",
     entity_id: event?.event_id,
     controller_id: event?.source || "mock",
-    metadata_hash: sha256Hex(event?.payload ?? event)
+    metadata_hash: hashPayload(event?.payload ?? event)
   });
 
   const conversionRecord = {
     record_type: "conversion",
     source_system: event?.source || "mock",
     source_format: "space_stack_event",
-    raw_record_hash: event?.payload_hash || sha256Hex(event?.payload ?? event),
+    raw_record_hash: event?.payload_hash || hashPayload(event?.payload ?? event),
     adapter_name: "iricity-space-stack-state-bridge",
     adapter_version: "0.1.0",
-    normalized_record_hash: sha256Hex(normalizedRecord),
+    normalized_record_hash: hashPayload(normalizedRecord),
     conversion_rule: "space_event_to_state_entity",
     ingested_at: timestamp,
     receipt_id: receipt?.receipt_id || null,
@@ -113,7 +111,7 @@ export function buildStateBridgeArtifact({ event, analysis, receipt, run }) {
     source_analysis_id: analysis?.analysis_id || null
   };
 
-  const recordHash = sha256Hex(conversionRecord);
+  const recordHash = hashPayload(conversionRecord);
 
   return {
     bridge_type: "state_stack_conversion",
@@ -126,7 +124,7 @@ export function buildStateBridgeArtifact({ event, analysis, receipt, run }) {
       previous_hash: receipt?.receipt_hash || null,
       timestamp,
       issuer: "iricity-space-stack",
-      signature: sha256Hex({
+      signature: hashPayload({
         record_hash: recordHash,
         issuer: "iricity-space-stack",
         timestamp
