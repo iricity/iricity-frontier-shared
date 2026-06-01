@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   CANONICAL_STATE_RECORD_TYPES,
   canonicalReceiptPayload,
+  buildReceiptSignatureStatus,
   hashPayload,
   normalizeSpaceEventToStateRecord,
   buildStateBridgeArtifact
@@ -41,6 +42,29 @@ test("canonicalReceiptPayload preserves the verification fields", () => {
     prev_receipt_hash: "sha256:def",
     timestamp: "2026-01-01T00:00:00Z",
     status: "issued"
+  });
+});
+
+test("buildReceiptSignatureStatus maps receipt metadata", () => {
+  const status = buildReceiptSignatureStatus(
+    {
+      receipt_signature_key_id: "key-1",
+      receipt_signature_algorithm: "ed25519"
+    },
+    {
+      public_verifiability: "portable_public_key_verification",
+      production_grade: "asymmetric_production_ready"
+    },
+    true
+  );
+
+  assert.deepEqual(status, {
+    verified: true,
+    key_id: "key-1",
+    algorithm: "ed25519",
+    verification_material: "public_key",
+    public_verifiability: "portable_public_key_verification",
+    production_grade: "asymmetric_production_ready"
   });
 });
 

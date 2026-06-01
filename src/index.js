@@ -34,6 +34,18 @@ export function canonicalReceiptPayload(receipt) {
   };
 }
 
+export function buildReceiptSignatureStatus(receipt, signingProfile, verified) {
+  const algorithm = receipt.receipt_signature_algorithm || null;
+  return {
+    verified,
+    key_id: receipt.receipt_signature_key_id || null,
+    algorithm,
+    verification_material: algorithm === "ed25519" ? "public_key" : "shared_secret",
+    public_verifiability: signingProfile.public_verifiability,
+    production_grade: signingProfile.production_grade
+  };
+}
+
 export function toStateEntityRecord(event, options = {}) {
   return {
     record_type: "entity",
