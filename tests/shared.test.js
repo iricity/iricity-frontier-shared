@@ -4,6 +4,7 @@ import {
   CANONICAL_STATE_RECORD_TYPES,
   canonicalReceiptPayload,
   buildReceiptSignatureStatus,
+  buildReceiptVerificationResponse,
   hashPayload,
   normalizeSpaceEventToStateRecord,
   buildStateBridgeArtifact
@@ -66,6 +67,44 @@ test("buildReceiptSignatureStatus maps receipt metadata", () => {
     public_verifiability: "portable_public_key_verification",
     production_grade: "asymmetric_production_ready"
   });
+});
+
+test("buildReceiptVerificationResponse can include or omit signature details", () => {
+  const withSignature = buildReceiptVerificationResponse({
+    receipt: {
+      receipt_id: "rcp_1",
+      action: "process",
+      receipt_signature_key_id: "key-1",
+      receipt_signature_algorithm: "ed25519"
+    },
+    signingProfile: {
+      public_verifiability: "portable_public_key_verification",
+      production_grade: "asymmetric_production_ready"
+    },
+    verified: true,
+    errors: [],
+    checks: ["hash_match"]
+  });
+
+  const withoutSignature = buildReceiptVerificationResponse({
+    receipt: {
+      receipt_id: "rcp_1",
+      action: "process"
+    },
+    signingProfile: {
+      public_verifiability: "portable_public_key_verification",
+      production_grade: "asymmetric_production_ready"
+    },
+    verified: false,
+    errors: ["Receipt hash mismatch"],
+    checks: ["hash_match"],
+    includeSignature: false
+  });
+
+  assert.equal(withSignature.signature.algorithm, "ed25519");
+  assert.equal(withSignature.verified, true);
+  assert.equal(withoutSignature.signature, undefined);
+  assert.equal(withoutSignature.verified, false);
 });
 
 test("normalizes a space event into a state record", () => {

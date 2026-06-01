@@ -46,6 +46,29 @@ export function buildReceiptSignatureStatus(receipt, signingProfile, verified) {
   };
 }
 
+export function buildReceiptVerificationResponse({
+  receipt,
+  signingProfile,
+  verified,
+  errors = [],
+  checks = [],
+  includeSignature = true
+}) {
+  const response = {
+    verified,
+    receipt_id: receipt.receipt_id,
+    action: receipt.action,
+    errors,
+    checks
+  };
+
+  if (includeSignature) {
+    response.signature = buildReceiptSignatureStatus(receipt, signingProfile, verified);
+  }
+
+  return response;
+}
+
 export function toStateEntityRecord(event, options = {}) {
   return {
     record_type: "entity",
