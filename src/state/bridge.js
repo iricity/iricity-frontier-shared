@@ -107,9 +107,12 @@ export function buildStateBridgeSummary({
   conversionRecord,
   bridgeType = 'state_stack_conversion'
 }) {
+  // Everything the summary names must be derivable from the records alone, so a
+  // registry recomputes the same summary without trusting the submitted one.
   const sourceSystem = event?.source || conversionRecord?.source_system || 'mock';
-  const sourceEventId = event?.event_id || null;
-  const sourceAnalysisId = analysis?.analysis_id || null;
+  const sourceEventId = event?.event_id || conversionRecord?.source_event_id || null;
+  const sourceAnalysisId = analysis?.analysis_id || conversionRecord?.source_analysis_id || null;
+  const runId = run?.run_id || conversionRecord?.run_id || null;
   const normalizedRecordType = normalizedRecord?.record_type || null;
   const normalizedSubjectId = recordSubjectId(normalizedRecord);
   const normalizedRecordHash = normalizedRecord ? hashPayload(normalizedRecord) : null;
@@ -120,7 +123,7 @@ export function buildStateBridgeSummary({
     source_system: sourceSystem,
     source_event_id: sourceEventId,
     source_analysis_id: sourceAnalysisId,
-    run_id: run?.run_id || null,
+    run_id: runId,
     normalized_record_hash: normalizedRecordHash,
     conversion_record_hash: conversionRecordHash,
     receipt_id: receipt?.receipt_id || null,
@@ -133,7 +136,7 @@ export function buildStateBridgeSummary({
     source_system: sourceSystem,
     source_event_id: sourceEventId,
     source_analysis_id: sourceAnalysisId,
-    run_id: run?.run_id || null,
+    run_id: runId,
     normalized_record_type: normalizedRecordType,
     normalized_subject_id: normalizedSubjectId,
     normalized_record_hash: normalizedRecordHash,
@@ -243,7 +246,8 @@ export function buildStateBridgeArtifact({ event, analysis, receipt, run, signer
     ingested_at: timestamp,
     receipt_id: receipt?.receipt_id || null,
     source_event_id: event?.event_id || null,
-    source_analysis_id: analysis?.analysis_id || null
+    source_analysis_id: analysis?.analysis_id || null,
+    run_id: run?.run_id || null
   };
 
   const linkedReceiptHash = receipt?.receipt_hash;

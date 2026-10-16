@@ -9,7 +9,7 @@ Hardening after an independent review. Signed objects produced by 0.2.0 still ve
 - Envelope header and receipt core are total: every field is serialized (null when absent) and verifiers require all of them. Verifiers check the version tags, recompute envelope_id and receipt_id, require envelope_hash and receipt_hash, validate ISO-8601 UTC timestamps, and accept only the exact 86-character unpadded base64url signature encoding.
 - An unsigned receipt may not name a did:key as issuer; verification_status must agree with the algorithm; the receipt_id override was removed because the id is derived.
 - resolveSigner accepts a 64-hex seed string as well as PEM.
-- Bridge summaries describe the bridge receipt (issuer, algorithm, status) and link the applied stack's receipt separately; recordSubjectId gives one subject precedence for registries.
+- Bridge summaries describe the bridge receipt (issuer, algorithm, status), link the applied stack's receipt separately, and are derivable from the records alone (source event, analysis and run ids fall back to the conversion record), so a registry recomputes the same summary without trusting the submitted one; recordSubjectId gives one subject precedence for registries.
 - Conformance vectors version 2 (60 cases, 8 suites): hash references, both base58 and did:key directions, chained and detached envelopes, a legacy receipt, and 26 rejections a verifier must refuse. An implementation conforms only with zero skipped suites.
 - Package ships CHANGELOG.md and omits the vector generator; the tag-creating release workflow was removed because tags it created could not trigger publishing.
 
