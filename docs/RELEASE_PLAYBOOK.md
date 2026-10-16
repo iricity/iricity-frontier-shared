@@ -58,7 +58,7 @@ npm trusted publishing can only be attached to a package that already exists, so
 
 1. On npmjs.com, open the package page, Settings, Trusted Publisher, Add GitHub Actions.
 2. Organization or user: `iricity`. Repository: `iricity-frontier-shared`. Workflow filename: `publish.yml`. Environment: `npm`.
-3. On GitHub, open the repository Settings, Environments, create `npm`, and add yourself as a required reviewer. Every publish then waits for one click of approval.
+3. On GitHub, open the repository Settings, Environments, create `npm`, and add yourself as a required reviewer. Every publish then waits for one click of approval. Note: on the GitHub Free plan this reviewer gate is available only on public repositories. While the repository is private the workflow still runs and the environment is created implicitly; the gate is that only a collaborator can push a release tag. Add the reviewer rule once the repository is public.
 4. Nothing else: the workflow in `.github/workflows/publish.yml` already requests an OIDC token and runs `npm publish --access public --provenance`.
 
 ## 4. Every later npm release
@@ -113,7 +113,7 @@ Definition of done for the Python package: `frontier-shared-conformance ../irici
 Follow the same shape as the JavaScript SDK release in `iricity-webapp/docs/SDK_RELEASE_PLAYBOOK.md`.
 
 1. `pyproject.toml` with name `iricity-frontier-shared`, version matching the JavaScript minor, license `Apache-2.0`, `cryptography` as the only runtime dependency, and the console script.
-2. Register a Trusted Publisher on PyPI for the project before the first upload (PyPI allows pending publishers for names that do not exist yet): owner `iricity`, repository `iricity-frontier-shared-py`, workflow `publish.yml`, environment `pypi`.
+2. Register a Trusted Publisher on PyPI for the project before the first upload (PyPI allows pending publishers for names that do not exist yet): owner `iricity`, repository `iricity-frontier-shared-py`, workflow `publish.yml`, environment `pypi`. The same GitHub Free note applies: the `pypi` environment exists implicitly while the repository is private; add the required-reviewer rule when it is public.
 3. Add a `publish.yml` workflow that builds with `python -m build`, runs `twine check dist/*`, runs the conformance script against a checked-out copy of the vectors, then uses `pypa/gh-action-pypi-publish@release/v1` with `id-token: write` and environment `pypi`.
 4. Tag `v<version>`, push, approve the environment run.
 5. Confirm: `pip install iricity-frontier-shared==<version>` in a fresh virtual environment, then run the conformance console script against the vectors.
