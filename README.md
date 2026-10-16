@@ -67,6 +67,10 @@ Regenerate the vectors only when the protocol version changes: `npm run conforma
 
 This package holds primitives only. It does not persist keys, run servers, or know about any product. Schemas and validation live in the state stack; nodes and services live in the applied stacks.
 
+## Releasing
+
+See [docs/RELEASE_PLAYBOOK.md](docs/RELEASE_PLAYBOOK.md): the 0.1 freeze checklist, the one-time manual npm publish, trusted publishing through GitHub Actions, moving consumers off the vendored tarball, and the Python implementation that proves the vectors are portable.
+
 ## License
 
 Apache-2.0. See `LICENSE`.

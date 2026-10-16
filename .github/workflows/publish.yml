@@ -1,0 +1,75 @@
+name: Publish
+
+# Publishes @iricity/frontier-shared to npm with provenance through npm trusted publishing.
+# Requires: a trusted publisher on npmjs.com pointing at this repository, workflow
+# "publish.yml" and environment "npm"; and a GitHub environment named "npm" with a
+# required reviewer. The first version of the package is published manually; see
+# docs/RELEASE_PLAYBOOK.md.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run conformance
+      - name: Check the tag matches package.json
+        if: github.event_name == 'push'
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "${GITHUB_REF_NAME}" != "v${version}" ]; then
+            echo "tag ${GITHUB_REF_NAME} does not match package.json version ${version}"
+            exit 1
+          fi
+      - run: npm pack --dry-run
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+      - run: npm ci
+      - name: Skip if this version is already published
+        id: exists
+        run: |
+          name="$(node -p "require('./package.json').name")"
+          version="$(node -p "require('./package.json').version")"
+          if npm view "${name}@${version}" version >/dev/null 2>&1; then
+            echo "already=true" >> "$GITHUB_OUTPUT"
+            echo "${name}@${version} is already on the registry; nothing to do."
+          else
+            echo "already=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publish with provenance
+        if: steps.exists.outputs.already == 'false'
+        run: npm publish --access public --provenance
+      - name: Post-publish check
+        if: steps.exists.outputs.already == 'false'
+        run: |
+          name="$(node -p "require('./package.json').name")"
+          version="$(node -p "require('./package.json').version")"
+          for i in 1 2 3 4 5 6; do
+            if npm view "${name}@${version}" version >/dev/null 2>&1; then exit 0; fi
+            sleep 10
+          done
+          echo "published version not visible on the registry yet"
+          exit 1
