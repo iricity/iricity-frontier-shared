@@ -1,17 +1,47 @@
 {
   "name": "@iricity/frontier-shared",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.2.0",
+  "description": "Canonical JSON, hashing, ed25519 identity, signed envelopes, signed receipt chains and state-record constructors shared by the frontier stacks. Reference primitives for the state protocol, with published conformance vectors.",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "src/index.js",
   "exports": {
-    ".": "./src/index.js"
+    ".": "./src/index.js",
+    "./conformance": "./conformance/run.js",
+    "./conformance/vectors.json": "./conformance/vectors.json"
   },
-  "description": "Shared canonical state record helpers for Iricity frontier stacks.",
+  "files": [
+    "src",
+    "conformance",
+    "LICENSE",
+    "README.md"
+  ],
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "conformance": "node conformance/run.js",
+    "conformance:build": "node conformance/build-vectors.js"
+  },
+  "keywords": [
+    "canonical-json",
+    "rfc8785",
+    "ed25519",
+    "did-key",
+    "receipts",
+    "provenance",
+    "space"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iricity/iricity-frontier-shared.git"
+  },
+  "homepage": "https://github.com/iricity/iricity-frontier-shared#readme",
+  "bugs": {
+    "url": "https://github.com/iricity/iricity-frontier-shared/issues"
   }
 }

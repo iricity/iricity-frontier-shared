@@ -1,0 +1,72 @@
+# frontier-shared
+
+Reference primitives for the Frontier State Protocol (FSP): canonical JSON, hashing, ed25519 identity as `did:key`, signed envelopes, signed receipt chains, and the record constructors that applied stacks use to talk to the state stack.
+
+Everything here is deterministic and dependency-free (Node 20+, built-in `crypto` only). Published conformance vectors let any other implementation, in any language, prove it produces the same bytes.
+
+## What it provides
+
+| Area | Exports | Standard it follows |
+| --- | --- | --- |
+| Canonical form | `canonicalJson` | RFC 8785 (JSON Canonicalization Scheme) |
+| Hashing | `hashPayload`, `hashRecord`, `hashBytes`, `sha256Hex` | SHA-256, `sha256:` prefixed hex |
+| Identity | `generateEd25519KeyPair`, `keyPairFromSeed`, `didFromPublicKeyBytes`, `publicKeyFromDid` | W3C DID Core, `did:key` method, multicodec `ed25519-pub` |
+| Signatures | `signBytes`, `verifyBytes` | RFC 8032 Ed25519 |
+| Envelopes | `createEnvelope`, `verifyEnvelope` | `state-envelope/1` (this project) |
+| Receipts | `createReceiptRecord`, `verifyReceiptRecord`, `verifyReceiptChain` | `state-receipt/1` (this project) |
+| Records | `createIdentityRecord`, `createAuthorizationRecord`, `PAYLOAD_PROFILES` | canonical state-record vocabulary |
+| Bridge | `buildStateBridgeArtifact` and the `toState*Record` helpers | applied-stack to state-stack handoff |
+
+## The two protocol objects
+
+**Envelope.** Attaches an identity to any payload without changing the payload. The signature covers the canonical header (version, payload type, payload hash, signer, time, previous link), so an envelope verifies with or without the payload body attached.
+
+```js
+import { generateEd25519KeyPair, createEnvelope, verifyEnvelope } from '@iricity/frontier-shared';
+
+const node = generateEd25519KeyPair();
+const envelope = createEnvelope({ payload: omm, payload_type: 'ccsds.omm.json/1', signer: node });
+verifyEnvelope(envelope);            // { verified: true, signer: 'did:key:z6Mk…', checks: [...] }
+```
+
+**Receipt.** Proves a record (by canonical hash) was accepted by an issuer at a time, linked to the previous receipt. Receipts are append-only and replayable.
+
+```js
+import { createReceiptRecord, verifyReceiptChain } from '@iricity/frontier-shared';
+
+const first = createReceiptRecord({ record, issuer: node });
+const second = createReceiptRecord({ record: next, previous_hash: first.receipt_hash, issuer: node });
+verifyReceiptChain([first, second], { require_genesis: true });   // { verified: true, head: '…' }
+```
+
+Signers are `did:key` identifiers, so verification needs nothing but the object itself. A receipt created with a plain string issuer is explicitly `signature_algorithm: "none"`, `verification_status: "unsigned"`; the library never dresses a hash up as a signature.
+
+## Conformance
+
+```
+npm run conformance          # check this implementation
+node conformance/run.js      # same, as a CLI (exit code 1 on failure)
+```
+
+`conformance/vectors.json` holds the fixed inputs and expected outputs. Its external anchors are the RFC 8785 sample, RFC 8032 Ed25519 tests 1 and 2, the base58btc "Hello World!" vector, and the did:key specification's Ed25519 example identifier. Envelope and receipt signatures are deterministic, so a second implementation must reproduce them byte for byte.
+
+To test another implementation from JavaScript:
+
+```js
+import { runConformance } from '@iricity/frontier-shared/conformance';
+const report = runConformance(myImplementation);   // { conformant, passed, failed, skipped, results }
+```
+
+Regenerate the vectors only when the protocol version changes: `npm run conformance:build` refuses to write vectors that disagree with the external anchors.
+
+## Canonical JSON notes
+
+`canonicalJson` is RFC 8785 for all JSON-native values. Two JavaScript conveniences are documented as extensions and covered by vectors: `Date` serializes as its ISO-8601 string, and `undefined` members are omitted (null inside arrays), exactly as `JSON.stringify` behaves. Non-finite numbers and `BigInt` throw, because a canonical form must be unambiguous.
+
+## Scope and non-goals
+
+This package holds primitives only. It does not persist keys, run servers, or know about any product. Schemas and validation live in the state stack; nodes and services live in the applied stacks.
+
+## License
+
+Apache-2.0. See `LICENSE`.
