@@ -12,6 +12,7 @@ Do not publish anything until every line below is true. Publishing is permanent 
 - [ ] Workspace check green: `scripts/run-workspace-checks.ps1` passes in all three repos, and `npm run conformance` prints `RESULT: conformant`.
 - [ ] Package hygiene: `npm pack --dry-run` lists only `src/`, `conformance/`, `LICENSE`, `README.md`, `package.json` (15 files today, about 25 kB). No fixtures, no tests, no `.env`.
 - [ ] No internal names: `grep -ri` for the private project names and for any AI or assistant attribution across the three repos returns nothing.
+- [ ] History is clean before any repository goes public: the state stack and space stack histories still contain the design chat logs that were moved out on 2026-10-16 (they mention internal project names). Rewrite history with git filter-repo to drop context.md, context2.md and umbrella context.md, force-push, and re-run the grep over the full history (git log -p | grep) before flipping visibility. Private repos need nothing.
 - [ ] CHANGELOG entry for the version being published (add `CHANGELOG.md` with this release if it does not exist yet).
 - [ ] The production node still verifies: a pass prediction from `https://iricity.space/space/nodes/node_zone_001_delhi/passes` verifies with `verifyEnvelope` from the exact commit being published.
 
