@@ -8,7 +8,7 @@ Do not publish anything until every line below is true. Publishing is permanent 
 
 - [ ] Protocol name final: trademark search done in the key markets, domain registered, ADR 0004 updated from `proposed` to `final`, and `name_status` in the state stack set to `final`.
 - [ ] Specification tagged: `iricity-state-stack` tags `spec-v0.1.0` on the commit whose `docs/spec/protocol-v0.1.md` and `schemas/` are frozen. Wire tags stay `state-envelope/1` and `state-receipt/1`.
-- [ ] Vectors tagged: `conformance/vectors.json` has `vectors_version: "1"` and no open issues against it. After the freeze, a change to any vector is a new `vectors_version`, never an edit.
+- [ ] Vectors pinned: `conformance/vectors.json` has `vectors_version: "1"` and `conformance/vectors.lock.json` holds its SHA-256 (a test fails if they diverge). After the freeze, a change to any vector is a new `vectors_version` with a new lock, never an edit. The Python repository vendors the same file under `src/frontier_shared/vectors/v1/` and must carry the same hash.
 - [ ] Workspace check green: `scripts/run-workspace-checks.ps1` passes in all three repos, and `npm run conformance` prints `RESULT: conformant`.
 - [ ] Package hygiene: `npm pack --dry-run` lists only `src/`, `conformance/`, `LICENSE`, `README.md`, `package.json` (15 files today, about 25 kB). No fixtures, no tests, no `.env`.
 - [ ] No internal names: `grep -ri` for the private project names and for any AI or assistant attribution across the three repos returns nothing.
@@ -83,7 +83,7 @@ For the space stack, that commit deploys to production on push. Do it when you c
 
 Purpose: a second implementation, in a different language, that passes `conformance/vectors.json` byte for byte. Until this exists the specification is a JavaScript program with a document attached; after it, the specification is real.
 
-Repository: `iricity/iricity-frontier-shared-py` (private until it passes the vectors). Package name on PyPI: `iricity-frontier-shared`. Module name: `frontier_shared`.
+Repository: `iricity/iricity-frontier-shared-py`. Package name on PyPI: `iricity-frontier-shared`. Module name: `frontier_shared`. Status 2026-10-17: implemented, 23 of 23 vectors with no suite skipped, 8 tests, `python -m build` and `twine check` pass, and it verifies live envelopes produced by the JavaScript node. Local repository initialized; it needs the GitHub repository created under the org and `parthod0x` added as a collaborator before it can be pushed.
 
 Scope, nothing more:
 

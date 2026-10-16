@@ -12,6 +12,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import {
   base58Decode,
@@ -215,5 +216,16 @@ const vectors = {
 };
 
 const outPath = path.join(here, 'vectors.json');
-fs.writeFileSync(outPath, `${JSON.stringify(vectors, null, 2)}\n`);
-process.stdout.write(`wrote ${outPath}\n`);
+const serialized = `${JSON.stringify(vectors, null, 2)}\n`;
+fs.writeFileSync(outPath, serialized);
+
+// The lock pins this vectors version. Consumers and second implementations compare
+// against it, so a regenerated file must produce the same hash unless the version changed.
+const lockPath = path.join(here, 'vectors.lock.json');
+const lock = {
+  vectors_version: vectors.vectors_version,
+  sha256: createHash('sha256').update(serialized).digest('hex'),
+  note: 'SHA-256 of conformance/vectors.json with LF line endings. Immutable for this vectors_version; a change to the vectors is a new version, never an edit.'
+};
+fs.writeFileSync(lockPath, `${JSON.stringify(lock, null, 2)}\n`);
+process.stdout.write(`wrote ${outPath} and ${lockPath} (sha256 ${lock.sha256.slice(0, 16)})\n`);
