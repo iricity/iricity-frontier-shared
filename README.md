@@ -39,7 +39,7 @@ const second = createReceiptRecord({ record: next, previous_hash: first.receipt_
 verifyReceiptChain([first, second], { require_genesis: true });   // { verified: true, head: '…' }
 ```
 
-Signers are `did:key` identifiers, so verification needs nothing but the object itself. A receipt created with a plain string issuer is explicitly `signature_algorithm: "none"`, `verification_status: "unsigned"`; the library never dresses a hash up as a signature.
+Signers are `did:key` identifiers, so verification needs nothing but the object itself. Verifiers never throw on malformed input and check every field the specification fixes: header and core completeness, version tags, derived ids and hashes, UTC timestamps, and the exact signature encoding. A receipt created with a plain string issuer is explicitly `signature_algorithm: "none"`, `verification_status: "unsigned"`; an unsigned receipt may never name a `did:key` as issuer, and the library never dresses a hash up as a signature.
 
 ## Conformance
 
@@ -48,7 +48,7 @@ npm run conformance          # check this implementation
 node conformance/run.js      # same, as a CLI (exit code 1 on failure)
 ```
 
-`conformance/vectors.json` holds the fixed inputs and expected outputs. Its external anchors are the RFC 8785 sample, RFC 8032 Ed25519 tests 1 and 2, the base58btc "Hello World!" vector, and the did:key specification's Ed25519 example identifier. Envelope and receipt signatures are deterministic, so a second implementation must reproduce them byte for byte.
+`conformance/vectors.json` (version 2) holds the fixed inputs and expected outputs across eight suites: canonical JSON, hash references, base58btc in both directions, did:key in both directions, Ed25519, envelopes (plain, chained, detached), receipts (signed, unsigned, legacy) and rejections that a verifier must refuse. Its external anchors are the RFC 8785 sample, RFC 8032 Ed25519 tests 1 and 2, the base58btc "Hello World!" vector, and the did:key specification's Ed25519 example identifier. Signatures are deterministic, so a second implementation must reproduce them byte for byte. An implementation conforms only when every suite passes and none is skipped; `conformance/vectors.lock.json` pins the file's hash.
 
 To test another implementation from JavaScript:
 
@@ -61,7 +61,9 @@ Regenerate the vectors only when the protocol version changes: `npm run conforma
 
 ## Canonical JSON notes
 
-`canonicalJson` is RFC 8785 for all JSON-native values. Two JavaScript conveniences are documented as extensions and covered by vectors: `Date` serializes as its ISO-8601 string, and `undefined` members are omitted (null inside arrays), exactly as `JSON.stringify` behaves. Non-finite numbers and `BigInt` throw, because a canonical form must be unambiguous.
+`canonicalJson` is RFC 8785 for all JSON values. Two JavaScript conveniences are documented as extensions and covered by unit tests (they cannot appear in JSON vectors): `Date` serializes as its ISO-8601 string, and `undefined` members are omitted (null inside arrays), exactly as `JSON.stringify` behaves. Non-finite numbers, `BigInt`, binary data, collections and nesting deeper than 256 levels throw, because a canonical form must be unambiguous and a verifier must not be crashable.
+
+`hashPayload` always hashes canonical JSON, so a string payload is hashed as the JSON string. Use `hashText` for raw text and `hashBytes` for bytes.
 
 ## Scope and non-goals
 

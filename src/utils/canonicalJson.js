@@ -12,8 +12,8 @@
  * - undefined / function / symbol members are omitted from objects (as JSON.stringify
  *   does) and become null inside arrays (as JSON.stringify does)
  *
- * Non-finite numbers and BigInt are rejected: a canonical form must be unambiguous,
- * and JSON has no representation for them.
+ * Rejected, because a canonical form must be unambiguous: non-finite numbers, BigInt,
+ * and values that are not plain JSON containers (Buffer, typed arrays, Map, Set).
  */
 
 function compareCodeUnits(a, b) {
@@ -29,7 +29,22 @@ function isOmitted(value) {
   return value === undefined || type === 'function' || type === 'symbol';
 }
 
-function serialize(value, path) {
+function isBinaryOrCollection(value) {
+  return (
+    ArrayBuffer.isView(value) ||
+    value instanceof ArrayBuffer ||
+    value instanceof Map ||
+    value instanceof Set ||
+    value instanceof WeakMap ||
+    value instanceof WeakSet
+  );
+}
+
+/** Nesting beyond this depth is rejected rather than risking a stack overflow on hostile input. */
+export const MAX_DEPTH = 256;
+
+function serialize(value, path, depth = 0) {
+  if (depth > MAX_DEPTH) throw new TypeError(`canonicalJson: nesting deeper than ${MAX_DEPTH} at ${path}`);
   if (value === null) return 'null';
   if (value instanceof Date) {
     const time = value.getTime();
@@ -55,17 +70,20 @@ function serialize(value, path) {
 
   if (Array.isArray(value)) {
     const items = value.map((item, index) =>
-      isOmitted(item) ? 'null' : serialize(item, `${path}[${index}]`)
+      isOmitted(item) ? 'null' : serialize(item, `${path}[${index}]`, depth + 1)
     );
     return `[${items.join(',')}]`;
   }
 
   if (type === 'object') {
+    if (isBinaryOrCollection(value)) {
+      throw new TypeError(`canonicalJson: binary data and collections are not JSON values at ${path}; use hashBytes for bytes`);
+    }
     const keys = Object.keys(value)
       .filter((key) => !isOmitted(value[key]))
       .sort(compareCodeUnits);
     const members = keys.map(
-      (key) => `${JSON.stringify(key)}:${serialize(value[key], `${path}.${key}`)}`
+      (key) => `${JSON.stringify(key)}:${serialize(value[key], `${path}.${key}`, depth + 1)}`
     );
     return `{${members.join(',')}}`;
   }

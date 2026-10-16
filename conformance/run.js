@@ -2,19 +2,20 @@
 /**
  * Conformance runner.
  *
- * Any implementation can prove compatibility by passing these vectors. Supply an
- * object with the functions below (all optional; missing ones are reported as
- * skipped), or run with no arguments to check the reference implementation.
+ * An implementation conforms when every suite passes and none is skipped. Supply an
+ * object with the functions below, or run with no arguments to check the reference.
  *
  *   canonicalJson(value) -> string
  *   hashPayload(value) -> "sha256:<hex>"
  *   base58Encode(bytes) -> string
+ *   base58Decode(text) -> bytes
  *   didFromPublicKeyBytes(bytes) -> "did:key:z6Mk…"
+ *   publicKeyBytesFromDid(did) -> bytes
  *   signBytes(messageBytes, { private_key_seed_hex }) -> bytes
- *   createEnvelope({ payload, payload_type, signer, created_at, previous_envelope_hash }) -> envelope
- *   verifyEnvelope(envelope) -> { verified }
+ *   createEnvelope({ payload, payload_type, signer, created_at, previous_envelope_hash, detached }) -> envelope
+ *   verifyEnvelope(envelope, options) -> { verified }
  *   createReceiptRecord({ record, previous_hash, issuer, timestamp }) -> receipt
- *   verifyReceiptRecord(receipt) -> { verified }
+ *   verifyReceiptRecord(receipt, options) -> { verified }
  */
 
 import fs from 'node:fs';
@@ -24,12 +25,18 @@ import * as reference from '../src/index.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
+export const SUITES = ['canonical_json', 'hash_payload', 'base58btc', 'did_key', 'ed25519', 'envelope', 'receipt', 'rejections'];
+
 export function loadVectors() {
   return JSON.parse(fs.readFileSync(path.join(here, 'vectors.json'), 'utf8'));
 }
 
 function hex(bytes) {
   return Buffer.from(bytes).toString('hex');
+}
+
+function signerFor(v) {
+  return { private_key_seed_hex: v.signer_seed_hex };
 }
 
 export function runConformance(impl = reference, vectors = loadVectors()) {
@@ -47,34 +54,57 @@ export function runConformance(impl = reference, vectors = loadVectors()) {
       record(suite, id, 'failed', error?.message || String(error));
     }
   };
+  const suite = (name) => {
+    const cases = vectors[name];
+    if (!Array.isArray(cases) || cases.length === 0) {
+      record(name, '*', 'failed', `vectors file has no "${name}" suite`);
+      return [];
+    }
+    return cases;
+  };
 
-  for (const v of vectors.canonical_json) {
+  for (const v of suite('canonical_json')) {
     check('canonical_json', v.id, () => {
       if (!impl.canonicalJson) return 'skipped';
       const actual = impl.canonicalJson(v.input);
       if (actual !== v.expected_canonical) return `expected ${v.expected_canonical} got ${actual}`;
-      if (impl.hashPayload && impl.hashPayload(v.input) !== v.expected_hash) return 'hash mismatch';
-      return true;
+      if (!impl.hashPayload) return 'skipped';
+      const hash = impl.hashPayload(v.input);
+      return hash === v.expected_hash ? true : `hash mismatch: ${hash}`;
     });
   }
 
-  for (const v of vectors.base58btc) {
-    check('base58btc', v.input_hex || 'empty', () => {
+  for (const v of suite('hash_payload')) {
+    check('hash_payload', v.id, () => {
+      if (!impl.hashPayload) return 'skipped';
+      const actual = impl.hashPayload(v.input);
+      return actual === v.expected_hash ? true : `expected ${v.expected_hash} got ${actual}`;
+    });
+  }
+
+  for (const v of suite('base58btc')) {
+    check('base58btc', v.id, () => {
       if (!impl.base58Encode) return 'skipped';
-      const actual = impl.base58Encode(Buffer.from(v.input_hex, 'hex'));
-      return actual === v.expected ? true : `expected ${v.expected} got ${actual}`;
+      const encoded = impl.base58Encode(Buffer.from(v.input_hex, 'hex'));
+      if (encoded !== v.expected) return `encode: expected ${v.expected} got ${encoded}`;
+      if (!impl.base58Decode) return 'skipped';
+      const decoded = hex(impl.base58Decode(v.expected));
+      return decoded === v.input_hex ? true : `decode: expected ${v.input_hex} got ${decoded}`;
     });
   }
 
-  for (const v of vectors.did_key) {
+  for (const v of suite('did_key')) {
     check('did_key', v.expected_did, () => {
       if (!impl.didFromPublicKeyBytes) return 'skipped';
-      const actual = impl.didFromPublicKeyBytes(Buffer.from(v.public_key_hex, 'hex'));
-      return actual === v.expected_did ? true : `expected ${v.expected_did} got ${actual}`;
+      const did = impl.didFromPublicKeyBytes(Buffer.from(v.public_key_hex, 'hex'));
+      if (did !== v.expected_did) return `encode: expected ${v.expected_did} got ${did}`;
+      if (!impl.publicKeyBytesFromDid) return 'skipped';
+      const raw = hex(impl.publicKeyBytesFromDid(v.expected_did));
+      return raw === v.public_key_hex ? true : `decode: expected ${v.public_key_hex} got ${raw}`;
     });
   }
 
-  for (const v of vectors.ed25519) {
+  for (const v of suite('ed25519')) {
     check('ed25519', v.id, () => {
       if (!impl.signBytes) return 'skipped';
       const signature = impl.signBytes(Buffer.from(v.message_hex, 'hex'), { private_key_seed_hex: v.seed_hex });
@@ -83,44 +113,65 @@ export function runConformance(impl = reference, vectors = loadVectors()) {
     });
   }
 
-  for (const v of vectors.envelope) {
+  for (const v of suite('envelope')) {
     check('envelope', v.id, () => {
-      if (!impl.createEnvelope) return 'skipped';
+      if (!impl.createEnvelope || !impl.verifyEnvelope) return 'skipped';
       const env = impl.createEnvelope({
         payload: v.payload,
         payload_type: v.payload_type,
-        signer: { private_key_seed_hex: v.signer_seed_hex },
+        signer: signerFor(v),
         created_at: v.created_at,
-        previous_envelope_hash: v.previous_envelope_hash
+        previous_envelope_hash: v.previous_envelope_hash,
+        detached: Boolean(v.detached)
       });
       const e = v.expected;
-      if (env.signer !== e.signer) return `signer ${env.signer}`;
-      if (env.payload_hash !== e.payload_hash) return `payload_hash ${env.payload_hash}`;
-      if (env.envelope_hash !== e.envelope_hash) return `envelope_hash ${env.envelope_hash}`;
-      if (env.envelope_id !== e.envelope_id) return `envelope_id ${env.envelope_id}`;
+      for (const field of ['signer', 'payload_hash', 'envelope_hash', 'envelope_id']) {
+        if (env[field] !== e[field]) return `${field}: expected ${e[field]} got ${env[field]}`;
+      }
       if (env.signature?.value !== e.signature_value) return `signature ${env.signature?.value}`;
-      if (impl.verifyEnvelope && !impl.verifyEnvelope(env).verified) return 'self-verification failed';
+      if (v.detached && env.payload !== undefined) return 'detached envelope must not carry a payload';
+      const verification = v.detached ? impl.verifyEnvelope(env, { payload: v.payload }) : impl.verifyEnvelope(env);
+      if (!verification.verified) return `self-verification failed: ${(verification.errors || []).join('; ')}`;
+      if (v.detached && impl.verifyEnvelope(env).verified !== true) return 'detached envelope must verify without its payload';
       return true;
     });
   }
 
-  for (const v of vectors.receipt) {
+  for (const v of suite('receipt')) {
     check('receipt', v.id, () => {
-      if (!impl.createReceiptRecord) return 'skipped';
+      if (!impl.createReceiptRecord || !impl.verifyReceiptRecord) return 'skipped';
+      if (v.legacy) {
+        const verification = impl.verifyReceiptRecord(v.receipt, { record: v.record });
+        return verification.verified === v.expected.verified ? true : `legacy: expected verified=${v.expected.verified} got ${verification.verified}: ${(verification.errors || []).join('; ')}`;
+      }
       const receipt = impl.createReceiptRecord({
         record: v.record,
         previous_hash: v.previous_hash,
-        issuer: v.signer_seed_hex ? { private_key_seed_hex: v.signer_seed_hex } : v.issuer,
+        issuer: v.signer_seed_hex ? signerFor(v) : v.issuer,
         timestamp: v.timestamp
       });
       const e = v.expected;
-      for (const field of ['receipt_id', 'record_hash', 'previous_hash', 'receipt_hash', 'issuer', 'signature', 'signature_algorithm']) {
+      for (const field of ['receipt_id', 'record_hash', 'previous_hash', 'receipt_hash', 'issuer', 'signature', 'signature_algorithm', 'verification_status']) {
         if (receipt[field] !== e[field]) return `${field}: expected ${e[field]} got ${receipt[field]}`;
       }
-      if (impl.verifyReceiptRecord && !impl.verifyReceiptRecord(receipt, { record: v.record }).verified) {
-        return 'self-verification failed';
+      const verification = impl.verifyReceiptRecord(receipt, { record: v.record });
+      return verification.verified ? true : `self-verification failed: ${(verification.errors || []).join('; ')}`;
+    });
+  }
+
+  for (const v of suite('rejections')) {
+    check('rejections', v.id, () => {
+      if (v.kind === 'envelope') {
+        if (!impl.verifyEnvelope) return 'skipped';
+        const verification = impl.verifyEnvelope(v.object, v.options || {});
+        return verification.verified === false ? true : 'tampered envelope was accepted';
       }
-      return true;
+      if (v.kind === 'receipt') {
+        if (!impl.verifyReceiptRecord) return 'skipped';
+        const verification = impl.verifyReceiptRecord(v.object, v.options || {});
+        return verification.verified === false ? true : 'tampered receipt was accepted';
+      }
+      return `unknown rejection kind ${v.kind}`;
     });
   }
 
@@ -130,7 +181,7 @@ export function runConformance(impl = reference, vectors = loadVectors()) {
 
   return {
     vectors_version: vectors.vectors_version,
-    conformant: failed === 0 && passed > 0,
+    conformant: failed === 0 && skipped === 0 && passed > 0,
     passed,
     failed,
     skipped,
@@ -138,7 +189,7 @@ export function runConformance(impl = reference, vectors = loadVectors()) {
   };
 }
 
-function formatReport(report) {
+export function formatReport(report) {
   const lines = [`conformance vectors ${report.vectors_version}: ${report.passed} passed, ${report.failed} failed, ${report.skipped} skipped`];
   for (const r of report.results) {
     if (r.status !== 'passed') lines.push(`  [${r.status}] ${r.suite}/${r.id}${r.detail ? `: ${r.detail}` : ''}`);

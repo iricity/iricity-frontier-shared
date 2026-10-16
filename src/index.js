@@ -1,10 +1,11 @@
 // Canonical form and hashing
-export { canonicalJson } from './utils/canonicalJson.js';
+export { canonicalJson, MAX_DEPTH } from './utils/canonicalJson.js';
 export {
   HASH_PREFIX,
   sha256Hex,
   sha256HexBytes,
   hashPayload,
+  hashText,
   hashBytes,
   hashRecord,
   isHashRef
@@ -34,7 +35,8 @@ export {
   signBytes,
   verifyBytes,
   encodeSignature,
-  decodeSignature
+  decodeSignature,
+  isValidSignatureText
 } from './crypto/keys.js';
 export {
   ENVELOPE_VERSION,
@@ -43,7 +45,10 @@ export {
   verifyEnvelope,
   envelopeHeader,
   envelopeHash,
-  envelopeSigningInput
+  envelopeIdFromHash,
+  envelopeSigningInput,
+  isTimestamp,
+  TIMESTAMP_PATTERN
 } from './crypto/envelope.js';
 
 // Protocol records
@@ -56,7 +61,8 @@ export {
   verifyReceiptChain,
   receiptCore,
   receiptSigningInput,
-  computeReceiptHash
+  computeReceiptHash,
+  deriveReceiptId
 } from './records/receipt.js';
 export {
   IDENTITY_TYPES,
@@ -75,6 +81,7 @@ export {
   buildReceiptSignatureStatus,
   buildReceiptVerificationResponse,
   buildStateBridgeSummary,
+  recordSubjectId,
   toStateEntityRecord,
   toStateNavigationRecord,
   toStateMeasurementRecord,

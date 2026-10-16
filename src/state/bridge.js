@@ -1,7 +1,8 @@
 /**
  * State-record constructors and the bridge artifact that applied stacks hand to the
- * state stack. Kept behaviorally compatible with the 0.1.x helpers; the embedded
- * receipt is now a real protocol receipt (signed when a signer is supplied).
+ * state stack. The embedded receipt is a real protocol receipt, signed when a signer
+ * is supplied, and the summary always describes that receipt (never the applied
+ * stack's own receipt, which is kept as a link).
  */
 
 import { hashPayload, isHashRef } from '../utils/hash.js';
@@ -22,7 +23,7 @@ export const CANONICAL_STATE_RECORD_TYPES = [
   'receipt'
 ];
 
-const BRIDGE_ADAPTER_VERSION = '0.2.0';
+const BRIDGE_ADAPTER_VERSION = '0.3.0';
 
 function nowIso() {
   return new Date().toISOString();
@@ -75,10 +76,32 @@ export function buildReceiptVerificationResponse({
   return response;
 }
 
+/** The subject a normalized record is about; one precedence order shared with registries. */
+export function recordSubjectId(record) {
+  if (!record || typeof record !== 'object') return null;
+  return (
+    record.subject_id ??
+    record.entity_id ??
+    record.message_id ??
+    record.command_id ??
+    record.transition_id ??
+    record.sensor_id ??
+    record.receipt_id ??
+    record.source_node ??
+    record.resource_type ??
+    null
+  );
+}
+
+/**
+ * Summary of a bridge. `receipt` is the bridge receipt (the protocol receipt over the
+ * conversion record); `linkedReceipt` is the applied stack's own receipt, if any.
+ */
 export function buildStateBridgeSummary({
   event,
   analysis,
   receipt,
+  linkedReceipt = null,
   run,
   normalizedRecord,
   conversionRecord,
@@ -88,15 +111,7 @@ export function buildStateBridgeSummary({
   const sourceEventId = event?.event_id || null;
   const sourceAnalysisId = analysis?.analysis_id || null;
   const normalizedRecordType = normalizedRecord?.record_type || null;
-  const normalizedSubjectId =
-    normalizedRecord?.subject_id ||
-    normalizedRecord?.entity_id ||
-    normalizedRecord?.message_id ||
-    normalizedRecord?.sensor_id ||
-    normalizedRecord?.command_id ||
-    normalizedRecord?.resource_type ||
-    normalizedRecord?.transition_id ||
-    null;
+  const normalizedSubjectId = recordSubjectId(normalizedRecord);
   const normalizedRecordHash = normalizedRecord ? hashPayload(normalizedRecord) : null;
   const conversionRecordHash = conversionRecord ? hashPayload(conversionRecord) : null;
   const issuedAt = receipt?.timestamp || conversionRecord?.ingested_at || run?.completed_at || null;
@@ -124,9 +139,12 @@ export function buildStateBridgeSummary({
     normalized_record_hash: normalizedRecordHash,
     conversion_record_hash: conversionRecordHash,
     receipt_id: receipt?.receipt_id || null,
+    receipt_issuer: receipt?.issuer || null,
+    receipt_signature_algorithm: receipt?.signature_algorithm || null,
+    linked_receipt_id: linkedReceipt?.receipt_id || null,
     conversion_rule: conversionRecord?.conversion_rule || null,
     issued_at: issuedAt,
-    status: receipt?.verification_status || 'issued'
+    status: receipt?.verification_status || 'unsigned'
   };
 }
 
@@ -217,7 +235,7 @@ export function buildStateBridgeArtifact({ event, analysis, receipt, run, signer
     record_type: 'conversion',
     source_system: event?.source || 'mock',
     source_format: 'space_stack_event',
-    raw_record_hash: event?.payload_hash || hashPayload(event?.payload ?? event),
+    raw_record_hash: isHashRef(event?.payload_hash) ? event.payload_hash : hashPayload(event?.payload ?? event),
     adapter_name: 'iricity-space-stack-state-bridge',
     adapter_version: BRIDGE_ADAPTER_VERSION,
     normalized_record_hash: hashPayload(normalizedRecord),
@@ -240,7 +258,8 @@ export function buildStateBridgeArtifact({ event, analysis, receipt, run, signer
   const summary = buildStateBridgeSummary({
     event,
     analysis,
-    receipt,
+    receipt: bridgeReceipt,
+    linkedReceipt: receipt || null,
     run,
     normalizedRecord,
     conversionRecord

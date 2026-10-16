@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.0 - 2026-10-17
+
+Hardening after an independent review. Signed objects produced by 0.2.0 still verify; the changes reject malformed and forged objects that 0.2.0 let through.
+
+- hashPayload always hashes canonical JSON: a string payload is hashed as the JSON string, never as raw text, so an object and the text of that object can no longer share a reference. hashText and hashBytes cover raw text and bytes. Record hashes are unchanged.
+- canonicalJson rejects binary data, Map, Set and nesting deeper than 256 levels, so verifiers cannot be crashed by hostile input.
+- Envelope header and receipt core are total: every field is serialized (null when absent) and verifiers require all of them. Verifiers check the version tags, recompute envelope_id and receipt_id, require envelope_hash and receipt_hash, validate ISO-8601 UTC timestamps, and accept only the exact 86-character unpadded base64url signature encoding.
+- An unsigned receipt may not name a did:key as issuer; verification_status must agree with the algorithm; the receipt_id override was removed because the id is derived.
+- resolveSigner accepts a 64-hex seed string as well as PEM.
+- Bridge summaries describe the bridge receipt (issuer, algorithm, status) and link the applied stack's receipt separately; recordSubjectId gives one subject precedence for registries.
+- Conformance vectors version 2 (60 cases, 8 suites): hash references, both base58 and did:key directions, chained and detached envelopes, a legacy receipt, and 26 rejections a verifier must refuse. An implementation conforms only with zero skipped suites.
+- Package ships CHANGELOG.md and omits the vector generator; the tag-creating release workflow was removed because tags it created could not trigger publishing.
+
 ## 0.2.0 - 2026-10-16
 
 - canonicalJson follows RFC 8785 exactly; non-finite numbers and BigInt are rejected.

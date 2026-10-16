@@ -10,7 +10,7 @@ Do not publish anything until every line below is true. Publishing is permanent 
 - [ ] Specification tagged: `iricity-state-stack` tags `spec-v0.1.0` on the commit whose `docs/spec/protocol-v0.1.md` and `schemas/` are frozen. Wire tags stay `state-envelope/1` and `state-receipt/1`.
 - [ ] Vectors pinned: `conformance/vectors.json` has `vectors_version: "1"` and `conformance/vectors.lock.json` holds its SHA-256 (a test fails if they diverge). After the freeze, a change to any vector is a new `vectors_version` with a new lock, never an edit. The Python repository vendors the same file under `src/frontier_shared/vectors/v1/` and must carry the same hash.
 - [ ] Workspace check green: `scripts/run-workspace-checks.ps1` passes in all three repos, and `npm run conformance` prints `RESULT: conformant`.
-- [ ] Package hygiene: `npm pack --dry-run` lists only `src/`, `conformance/`, `LICENSE`, `README.md`, `package.json` (15 files today, about 25 kB). No fixtures, no tests, no `.env`.
+- [ ] Package hygiene: `npm pack --dry-run` lists only `src/`, `conformance/run.js`, `conformance/vectors.json`, `conformance/vectors.lock.json`, `LICENSE`, `README.md`, `CHANGELOG.md`, `package.json`. No generator, no tests, no fixtures, no `.env`.
 - [ ] No internal names: `grep -ri` for the private project names and for any AI or assistant attribution across the three repos returns nothing.
 - [x] History is clean (done 2026-10-17): the design chat logs were removed from the full history of the state stack and the space stack with git filter-repo, all branches and tags were force-pushed, stale branches deleted, and fresh clones show zero internal-name hits. Backups are in the private notes folder under repo-backups. One residue only GitHub can clear: merged pull requests keep their original commits reachable through pull-request refs and cached views. Before flipping either repository to public, ask GitHub Support to purge those, or create a fresh public repository from the rewritten history (simplest and certain).
 - [ ] CHANGELOG entry for the version being published (add `CHANGELOG.md` with this release if it does not exist yet).
@@ -52,7 +52,7 @@ npm trusted publishing can only be attached to a package that already exists, so
    npm view @iricity/frontier-shared version dist.tarball
    npx -y @iricity/frontier-shared@latest node -e "import('@iricity/frontier-shared').then(m=>console.log(m.ENVELOPE_VERSION))"
    ```
-5. Tag the commit `v<version>` and push the tag. The Actions workflow is tag-triggered and will no-op gracefully on a version that already exists.
+5. Tag the commit `v<version>` from your machine and push the tag. The publish workflow is tag-triggered and no-ops on a version that already exists. (Tags created by a workflow with the default token do not trigger other workflows, which is why there is no tag-creating workflow in this repository.)
 
 ## 3. Set up trusted publishing (so no token ever lives on a laptop or in a secret)
 
@@ -95,7 +95,7 @@ Scope, nothing more:
 | `frontier_shared.keys` | `KeyPair.from_seed`, `did_from_public_key_bytes`, `public_key_bytes_from_did`, `sign_bytes`, `verify_bytes` | `did_key`, `ed25519` |
 | `frontier_shared.envelope` | `create_envelope`, `verify_envelope` | `envelope` |
 | `frontier_shared.receipt` | `create_receipt_record`, `verify_receipt_record`, `verify_receipt_chain` | `receipt` |
-| `frontier_shared.conformance` | `run_conformance(vectors_path)`; also a console script `frontier-shared-conformance` | all |
+| `frontier_shared.conformance` | `run_conformance(vectors)` with `load_vectors(path)`; console script `frontier-shared-conformance [path]` | all |
 
 Rules that make it pass:
 
@@ -114,7 +114,7 @@ Follow the same shape as the JavaScript SDK release in `iricity-webapp/docs/SDK_
 
 1. `pyproject.toml` with name `iricity-frontier-shared`, version matching the JavaScript minor, license `Apache-2.0`, `cryptography` as the only runtime dependency, and the console script.
 2. Register a Trusted Publisher on PyPI for the project before the first upload (PyPI allows pending publishers for names that do not exist yet): owner `iricity`, repository `iricity-frontier-shared-py`, workflow `publish.yml`, environment `pypi`. The same GitHub Free note applies: the `pypi` environment exists implicitly while the repository is private; add the required-reviewer rule when it is public.
-3. Add a `publish.yml` workflow that builds with `python -m build`, runs `twine check dist/*`, runs the conformance script against a checked-out copy of the vectors, then uses `pypa/gh-action-pypi-publish@release/v1` with `id-token: write` and environment `pypi`.
+3. The committed `publish.yml` builds with `python -m build`, runs `twine check dist/*`, runs the conformance script against the vendored vectors (a test asserts the vendored copy matches the lock from the JavaScript repository), then uses `pypa/gh-action-pypi-publish@release/v1` with `id-token: write` and environment `pypi`.
 4. Tag `v<version>`, push, approve the environment run.
 5. Confirm: `pip install iricity-frontier-shared==<version>` in a fresh virtual environment, then run the conformance console script against the vectors.
 

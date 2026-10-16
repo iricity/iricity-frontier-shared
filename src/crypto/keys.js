@@ -147,7 +147,11 @@ export function keyPairFromPrivateKeyPem(pem) {
  */
 export function resolveSigner(signer) {
   if (!signer) throw new TypeError('signer is required');
-  if (typeof signer === 'string') return resolveSigner(keyPairFromPrivateKeyPem(signer));
+  if (typeof signer === 'string') {
+    return /^[0-9a-fA-F]{64}$/.test(signer.trim())
+      ? resolveSigner(keyPairFromSeed(signer.trim()))
+      : resolveSigner(keyPairFromPrivateKeyPem(signer));
+  }
 
   let privateKey = signer.private_key;
   if (privateKey && !(privateKey instanceof KeyObject)) {
@@ -192,11 +196,18 @@ export function verifyBytes(message, signature, verifier) {
   }
 }
 
+const SIGNATURE_TEXT = /^[A-Za-z0-9_-]{86}$/;
+
+/** Exactly 64 bytes as unpadded base64url: the only accepted signature encoding. */
+export function isValidSignatureText(text) {
+  return typeof text === 'string' && SIGNATURE_TEXT.test(text);
+}
+
 export function encodeSignature(bytes) {
   return Buffer.from(bytes).toString('base64url');
 }
 
 export function decodeSignature(text) {
-  if (typeof text !== 'string') throw new TypeError('signature must be a string');
+  if (!isValidSignatureText(text)) throw new TypeError('signature must be 64 bytes as unpadded base64url');
   return Buffer.from(text, 'base64url');
 }
