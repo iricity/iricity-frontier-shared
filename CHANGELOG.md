@@ -3,6 +3,7 @@
 ## 0.5.0 - 2026-10-27
 
 - Conformance vectors version 3 (75 cases, nine suites): a `credential` suite pins issued credentials byte for byte (ids, verification methods, proof values, hash inputs) and binds a regulator-issued authorization to its credential; twelve new rejections cover tampered subjects, swapped issuers, corrupted proof values, unknown cryptosuites, offsets in proof timestamps, expiry, premature use, widened bands, foreign controllers and missing proofs. The runner accepts `issueAuthorizationCredential`, `verifyCredential`, `credentialHashData` and `verifyAuthorizationCredential` from an implementation under test.
+- Two payload profile ids for the discovery and federation drafts: `node-descriptor.json/1` (a node's signed self-description) and `chain-head.json/1` (a registry's signed chain head).
 - No change to any signed object format. 0.4.0 objects verify unchanged.
 
 ## 0.4.0 - 2026-10-27

@@ -33,7 +33,9 @@ export const PAYLOAD_PROFILES = Object.freeze({
   STAC_ITEM: 'stac.item.json/1',
   PASS_PREDICTION: 'pass-prediction.json/1',
   STATE_RECORD: 'state-record.json/1',
-  OPAQUE_JSON: 'opaque.json/1'
+  OPAQUE_JSON: 'opaque.json/1',
+  NODE_DESCRIPTOR: 'node-descriptor.json/1',
+  CHAIN_HEAD: 'chain-head.json/1'
 });
 
 function nowIso() {
