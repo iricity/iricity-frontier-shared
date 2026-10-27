@@ -41,6 +41,29 @@ verifyReceiptChain([first, second], { require_genesis: true });   // { verified:
 
 Signers are `did:key` identifiers, so verification needs nothing but the object itself. Verifiers never throw on malformed input and check every field the specification fixes: header and core completeness, version tags, derived ids and hashes, UTC timestamps, and the exact signature encoding. A receipt created with a plain string issuer is explicitly `signature_algorithm: "none"`, `verification_status: "unsigned"`; an unsigned receipt may never name a `did:key` as issuer, and the library never dresses a hash up as a signature.
 
+## Regulator-issued authorizations
+
+An authorization record's `proof` can carry a W3C Verifiable Credential (Data Model 2.0) issued by a regulator over the record's attested fields, secured with a Data Integrity proof using the `eddsa-jcs-2022` cryptosuite. That suite canonicalises with JCS, the protocol's own canonical form, so issuing and verifying need SHA-256 and Ed25519 only, no JSON-LD processing.
+
+```js
+import { createRegulatorIssuedAuthorization, verifyAuthorizationCredential } from '@iricity/frontier-shared';
+
+const licence = createRegulatorIssuedAuthorization({
+  subject_id: 'station_vu2abc',
+  capability: 'transmit',
+  jurisdiction: 'IN',
+  bands: [{ lower_hz: 144e6, upper_hz: 146e6, service: 'amateur' }],
+  max_eirp_dbw: 20,
+  license_reference: 'ASOC/EXAMPLE/0001',
+  valid_from: '2026-01-01T00:00:00.000Z',
+  valid_until: '2031-01-01T00:00:00.000Z',
+  regulator: regulatorKeyPair
+});
+verifyAuthorizationCredential(licence);   // { verified: true, issuer: 'did:key:z6Mk…', checks: [...] }
+```
+
+The record names the regulator's `did:key` as `controller_id`; verification binds the credential to that issuer and to every attested field of the record, so neither can be changed after issue. `issueAuthorizationCredential` and `verifyCredential` expose the credential layer on its own. Credential test vectors join the conformance set in the next vector version, together with the Python implementation.
+
 ## Conformance
 
 ```

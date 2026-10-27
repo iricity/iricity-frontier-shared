@@ -8,7 +8,8 @@
  */
 
 import { hashPayload } from '../utils/hash.js';
-import { isDidKey, publicKeyMultibaseFromDid } from '../crypto/keys.js';
+import { isDidKey, publicKeyMultibaseFromDid, resolveSigner } from '../crypto/keys.js';
+import { issueAuthorizationCredential } from './credential.js';
 
 export const IDENTITY_TYPES = [
   'organization',
@@ -141,6 +142,20 @@ export function createAuthorizationRecord({
 }
 
 /** Is this authorization usable at `at` (ISO string or Date)? */
+/**
+ * A regulator-issued authorization: the regulator signs a verifiable credential over
+ * the attested fields, and the record names the regulator's did:key as controller.
+ * @param {object} args  the authorization fields plus `regulator` (key material) and optional `created`, `credential_id`
+ */
+export function createRegulatorIssuedAuthorization({ regulator, created, credential_id, ...fields }) {
+  if (!regulator) throw new TypeError('regulator key material is required');
+  const signer = resolveSigner(regulator);
+  const valid_from = fields.valid_from ?? nowIso();
+  const attested = { ...fields, valid_from, valid_until: fields.valid_until ?? null };
+  const proof = issueAuthorizationCredential({ authorization: attested, issuer: signer, created, id: credential_id });
+  return createAuthorizationRecord({ ...attested, controller_id: signer.did, profile: 'regulator_issued', proof });
+}
+
 export function authorizationIsCurrent(authorization, at = new Date()) {
   if (!authorization || authorization.revoked) return false;
   const time = new Date(at).getTime();

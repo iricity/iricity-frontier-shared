@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0 - 2026-10-27
+
+- Regulator-issued authorizations: `issueAuthorizationCredential` and `verifyCredential` implement a W3C Verifiable Credential (Data Model 2.0) with a Data Integrity proof, cryptosuite `eddsa-jcs-2022` (JCS canonical form, SHA-256, Ed25519, multibase base58btc proof value, `did:key` verification method). `verifyAuthorizationCredential` binds a record's `proof` to its `controller_id` (the issuer DID), its `subject_id` and every attested field; `createRegulatorIssuedAuthorization` builds such a record in one call. Verification never throws.
+- No change to envelopes, receipts, hashes or the version 2 conformance vectors; credential vectors arrive with vector version 3 alongside the Python implementation.
+
 ## 0.3.0 - 2026-10-17
 
 Hardening after an independent review. Signed objects produced by 0.2.0 still verify; the changes reject malformed and forged objects that 0.2.0 let through.

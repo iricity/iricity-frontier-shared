@@ -71,8 +71,23 @@ export {
   PAYLOAD_PROFILES,
   createIdentityRecord,
   createAuthorizationRecord,
+  createRegulatorIssuedAuthorization,
   authorizationIsCurrent
 } from './records/protocol.js';
+export {
+  CREDENTIAL_CONTEXT_V2,
+  AUTHORIZATION_VOCAB,
+  AUTHORIZATION_CREDENTIAL_TYPE,
+  DATA_INTEGRITY_PROOF,
+  CRYPTOSUITE,
+  PROOF_PURPOSE,
+  CREDENTIAL_SUBJECT_FIELDS,
+  credentialHashData,
+  credentialSubjectFromAuthorization,
+  issueAuthorizationCredential,
+  verifyCredential,
+  verifyAuthorizationCredential
+} from './records/credential.js';
 
 // State-record helpers and the applied-stack bridge (0.1.x compatible)
 export {
