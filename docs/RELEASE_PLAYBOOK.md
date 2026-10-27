@@ -8,17 +8,18 @@ Do not publish anything until every line below is true. Publishing is permanent 
 
 - [ ] Protocol name final: trademark search done in the key markets, domain registered, ADR 0004 updated from `proposed` to `final`, and `name_status` in the state stack set to `final`.
 - [ ] Specification tagged: `iricity-state-stack` tags `spec-v0.1.0` on the commit whose `docs/spec/protocol-v0.1.md` and `schemas/` are frozen. Wire tags stay `state-envelope/1` and `state-receipt/1`.
-- [ ] Vectors pinned: `conformance/vectors.json` has `vectors_version: "1"` and `conformance/vectors.lock.json` holds its SHA-256 (a test fails if they diverge). After the freeze, a change to any vector is a new `vectors_version` with a new lock, never an edit. The Python repository vendors the same file under `src/frontier_shared/vectors/v1/` and must carry the same hash.
-- [ ] Workspace check green: `scripts/run-workspace-checks.ps1` passes in all three repos, and `npm run conformance` prints `RESULT: conformant`.
-- [ ] Package hygiene: `npm pack --dry-run` lists only `src/`, `conformance/run.js`, `conformance/vectors.json`, `conformance/vectors.lock.json`, `LICENSE`, `README.md`, `CHANGELOG.md`, `package.json`. No generator, no tests, no fixtures, no `.env`.
-- [ ] No internal names: `grep -ri` for the private project names and for any AI or assistant attribution across the three repos returns nothing.
-- [x] History is clean (done 2026-10-17): the design chat logs were removed from the full history of the state stack and the space stack with git filter-repo, all branches and tags were force-pushed, stale branches deleted, and fresh clones show zero internal-name hits. Backups are in the private notes folder under repo-backups. One residue only GitHub can clear: merged pull requests keep their original commits reachable through pull-request refs and cached views. Before flipping either repository to public, ask GitHub Support to purge those, or create a fresh public repository from the rewritten history (simplest and certain).
+- [x] Vectors pinned (version 3, 75 cases, 2026-10-27): `conformance/vectors.json` carries `vectors_version: "3"` and `conformance/vectors.lock.json` its SHA-256 (a test fails if they diverge). A change to any vector is a new `vectors_version` with a new lock, never an edit. The Python repository vendors the same file under `src/frontier_shared/vectors/v3/` and carries the same hash; both implementations pass 75 of 75 with no suite skipped.
+- [x] Workspace check green (2026-10-27): every suite passes in all five repositories (primitives JS and Python, state stack, space stack, space node) and both conformance runners print `RESULT: conformant`.
+- [x] Package hygiene (2026-10-27): `npm pack --dry-run` lists only `src/`, `conformance/run.js`, `conformance/vectors.json`, `conformance/vectors.lock.json`, `LICENSE`, `README.md`, `CHANGELOG.md`, `package.json` (17 files, 33 kB). The Python `python -m build` plus `twine check` pass. Neither tarball contains a secret, an internal name or attribution (scanned).
+- [x] No internal names (2026-10-20, rescanned 2026-10-27): the full history of every repository, the pre-rewrite backups, the published SDK versions and the unpublished tarballs carry no secret, no private project name and no attribution.
+- [x] History is clean (2026-10-17 content rewrite; 2026-10-20 author rewrite to the GitHub noreply address): fresh clones of all repositories show zero internal-name hits and no personal email. Backups are in the private notes folder under repo-backups.
+- [ ] Residue only a fresh repository clears: GitHub still serves the pre-rewrite head commits of `iricity-frontier-shared`, `iricity-frontier-shared-py` and `iricity-state-stack` by SHA (checked 2026-10-27), and the space stack's merged pull requests keep theirs. Publication therefore uses fresh repositories: rename each existing private repository to `<name>-private-archive` (or delete it once nothing points at it), create a new repository with the original name, public from the start, and push the clean history from this machine. Trusted publishers are name-based (owner and repository name), so they bind to the new repositories unchanged. The space stack stays private, so its residue never matters; the node repository has been clean since its first commit.
 - [ ] CHANGELOG entry for the version being published (add `CHANGELOG.md` with this release if it does not exist yet).
 - [ ] The production node still verifies: a pass prediction from `https://iricity.space/space/nodes/node_zone_001_delhi/passes` verifies with `verifyEnvelope` from the exact commit being published.
 
 ## 1. Versioning
 
-Semantic versioning, starting from `0.2.0` which is already in `package.json`.
+Semantic versioning. The first published version of both implementations is `0.5.0`: it carries vectors version 3 and the regulator-issued credential layer, and the two implementations are aligned on it.
 
 - `0.x.y`: wire formats may still gain fields; a breaking change to canonical form, envelope or receipt bumps the wire tag (`/2`) and the minor version.
 - `1.0.0`: the first version published after `spec-v1.0.0` is tagged. Not before.
@@ -26,7 +27,7 @@ Semantic versioning, starting from `0.2.0` which is already in `package.json`.
 
 ## 2. First npm publish (one time, manual, from the `iricity` npm account)
 
-npm trusted publishing can only be attached to a package that already exists, so the first version is published by hand. Everything after that goes through GitHub Actions.
+npm trusted publishing can only be attached to a package that already exists, so the first version is published by hand. Everything after that goes through GitHub Actions. Order on the day: fresh public repositories first (section 0, last line), then this publish, then the trusted publisher (section 3), then the tag.
 
 1. On a machine you trust, log in as the account that owns the `@iricity` scope:
    ```
