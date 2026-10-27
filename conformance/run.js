@@ -16,6 +16,10 @@
  *   verifyEnvelope(envelope, options) -> { verified }
  *   createReceiptRecord({ record, previous_hash, issuer, timestamp }) -> receipt
  *   verifyReceiptRecord(receipt, options) -> { verified }
+ *   issueAuthorizationCredential({ authorization, issuer, created, id }) -> credential
+ *   verifyCredential(credential, { at, expected_issuer }) -> { verified }
+ *   credentialHashData(credential, proof) -> bytes
+ *   verifyAuthorizationCredential(record, { at }) -> { verified, issuer }
  */
 
 import fs from 'node:fs';
@@ -25,7 +29,7 @@ import * as reference from '../src/index.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
-export const SUITES = ['canonical_json', 'hash_payload', 'base58btc', 'did_key', 'ed25519', 'envelope', 'receipt', 'rejections'];
+export const SUITES = ['canonical_json', 'hash_payload', 'base58btc', 'did_key', 'ed25519', 'envelope', 'receipt', 'credential', 'rejections'];
 
 export function loadVectors() {
   return JSON.parse(fs.readFileSync(path.join(here, 'vectors.json'), 'utf8'));
@@ -159,8 +163,43 @@ export function runConformance(impl = reference, vectors = loadVectors()) {
     });
   }
 
+  for (const v of suite('credential')) {
+    check('credential', v.id, () => {
+      if (v.authorization_record) {
+        if (!impl.verifyAuthorizationCredential) return 'skipped';
+        const bound = impl.verifyAuthorizationCredential(v.authorization_record, { at: v.at });
+        if (bound.verified !== v.expected.verified) return `expected verified=${v.expected.verified}: ${(bound.errors || []).join('; ')}`;
+        if (bound.issuer !== v.expected.issuer) return `issuer: expected ${v.expected.issuer} got ${bound.issuer}`;
+        return true;
+      }
+      if (!impl.issueAuthorizationCredential || !impl.verifyCredential || !impl.credentialHashData) return 'skipped';
+      const credential = impl.issueAuthorizationCredential({ authorization: v.authorization, issuer: signerFor(v), created: v.created, id: v.credential_id });
+      const e = v.expected;
+      if (credential.id !== e.id) return `id: expected ${e.id} got ${credential.id}`;
+      if (credential.issuer !== e.issuer) return `issuer: expected ${e.issuer} got ${credential.issuer}`;
+      if (credential.proof?.verificationMethod !== e.verification_method) return `verificationMethod: ${credential.proof?.verificationMethod}`;
+      if (credential.proof?.proofValue !== e.proof_value) return `proofValue: expected ${e.proof_value} got ${credential.proof?.proofValue}`;
+      const hashData = hex(impl.credentialHashData(credential, credential.proof));
+      if (hashData !== e.hash_data_hex) return `hash_data: expected ${e.hash_data_hex} got ${hashData}`;
+      const canon = impl.canonicalJson || JSON.stringify;
+      if (canon(credential.credentialSubject) !== canon(e.credential_subject)) return 'credentialSubject differs';
+      const verification = impl.verifyCredential(credential, { at: v.at });
+      return verification.verified ? true : `self-verification failed: ${(verification.errors || []).join('; ')}`;
+    });
+  }
+
   for (const v of suite('rejections')) {
     check('rejections', v.id, () => {
+      if (v.kind === 'credential') {
+        if (!impl.verifyCredential) return 'skipped';
+        const verification = impl.verifyCredential(v.object, v.options || {});
+        return verification.verified === false ? true : 'tampered credential was accepted';
+      }
+      if (v.kind === 'authorization') {
+        if (!impl.verifyAuthorizationCredential) return 'skipped';
+        const verification = impl.verifyAuthorizationCredential(v.object, v.options || {});
+        return verification.verified === false ? true : 'unbound authorization was accepted';
+      }
       if (v.kind === 'envelope') {
         if (!impl.verifyEnvelope) return 'skipped';
         const verification = impl.verifyEnvelope(v.object, v.options || {});

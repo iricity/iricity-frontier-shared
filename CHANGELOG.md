@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0 - 2026-10-27
+
+- Conformance vectors version 3 (75 cases, nine suites): a `credential` suite pins issued credentials byte for byte (ids, verification methods, proof values, hash inputs) and binds a regulator-issued authorization to its credential; twelve new rejections cover tampered subjects, swapped issuers, corrupted proof values, unknown cryptosuites, offsets in proof timestamps, expiry, premature use, widened bands, foreign controllers and missing proofs. The runner accepts `issueAuthorizationCredential`, `verifyCredential`, `credentialHashData` and `verifyAuthorizationCredential` from an implementation under test.
+- No change to any signed object format. 0.4.0 objects verify unchanged.
+
 ## 0.4.0 - 2026-10-27
 
 - Regulator-issued authorizations: `issueAuthorizationCredential` and `verifyCredential` implement a W3C Verifiable Credential (Data Model 2.0) with a Data Integrity proof, cryptosuite `eddsa-jcs-2022` (JCS canonical form, SHA-256, Ed25519, multibase base58btc proof value, `did:key` verification method). `verifyAuthorizationCredential` binds a record's `proof` to its `controller_id` (the issuer DID), its `subject_id` and every attested field; `createRegulatorIssuedAuthorization` builds such a record in one call. Verification never throws.

@@ -71,7 +71,7 @@ npm run conformance          # check this implementation
 node conformance/run.js      # same, as a CLI (exit code 1 on failure)
 ```
 
-`conformance/vectors.json` (version 2) holds the fixed inputs and expected outputs across eight suites: canonical JSON, hash references, base58btc in both directions, did:key in both directions, Ed25519, envelopes (plain, chained, detached), receipts (signed, unsigned, legacy) and rejections that a verifier must refuse. Its external anchors are the RFC 8785 sample, RFC 8032 Ed25519 tests 1 and 2, the base58btc "Hello World!" vector, and the did:key specification's Ed25519 example identifier. Signatures are deterministic, so a second implementation must reproduce them byte for byte. An implementation conforms only when every suite passes and none is skipped; `conformance/vectors.lock.json` pins the file's hash.
+`conformance/vectors.json` (version 3, 75 cases) holds the fixed inputs and expected outputs across nine suites: canonical JSON, hash references, base58btc in both directions, did:key in both directions, Ed25519, envelopes (plain, chained, detached), receipts (signed, unsigned, legacy), credentials (issued byte for byte, and an authorization bound to its credential) and rejections that a verifier must refuse. Its external anchors are the RFC 8785 sample, RFC 8032 Ed25519 tests 1 and 2, the base58btc "Hello World!" vector, and the did:key specification's Ed25519 example identifier. Signatures are deterministic, so a second implementation must reproduce them byte for byte. An implementation conforms only when every suite passes and none is skipped; `conformance/vectors.lock.json` pins the file's hash.
 
 To test another implementation from JavaScript:
 

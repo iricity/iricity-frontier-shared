@@ -31,9 +31,10 @@ import {
   sha256Hex,
   signBytes
 } from '../src/index.js';
+import { credentialHashData, createRegulatorIssuedAuthorization, issueAuthorizationCredential } from '../src/index.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const VECTORS_VERSION = '2';
+const VECTORS_VERSION = '3';
 
 function assert(condition, message) {
   if (!condition) throw new Error(`conformance anchor failed: ${message}`);
@@ -263,15 +264,65 @@ const rejections = [
   { id: 'receipt-unsigned-did-issuer', kind: 'receipt', object: { ...unsigned, issuer: signer.did } }
 ];
 
+// Regulator-issued credentials: deterministic for a fixed key and creation time.
+const licenceFields = {
+  subject_id: 'station_vu2abc',
+  capability: 'transmit',
+  scope: 'amateur_general_grade',
+  jurisdiction: 'IN',
+  bands: [
+    { lower_hz: 144000000, upper_hz: 146000000, service: 'amateur' },
+    { lower_hz: 434000000, upper_hz: 438000000, service: 'amateur' }
+  ],
+  max_eirp_dbw: 20,
+  location: { latitude: 28.6139, longitude: 77.209, radius_km: 1 },
+  license_reference: 'ASOC/EXAMPLE/0001',
+  valid_from: '2026-01-01T00:00:00.000Z',
+  valid_until: '2031-01-01T00:00:00.000Z'
+};
+const receiveFields = { subject_id: 'station_vu2xyz', capability: 'receive', jurisdiction: 'IN', valid_from: '2026-01-01T00:00:00.000Z' };
+const credentialTransmit = issueAuthorizationCredential({ authorization: licenceFields, issuer: signer, created: '2026-01-01T00:00:00.000Z' });
+const credentialReceive = issueAuthorizationCredential({ authorization: receiveFields, issuer: signer, created: '2026-01-02T00:00:00.000Z', id: 'urn:example:credential:receive-1' });
+const regulatorRecord = createRegulatorIssuedAuthorization({ ...licenceFields, regulator: signer, created: '2026-01-01T00:00:00.000Z' });
+const pickCredential = (c) => ({
+  id: c.id,
+  issuer: c.issuer,
+  verification_method: c.proof.verificationMethod,
+  proof_value: c.proof.proofValue,
+  hash_data_hex: Buffer.from(credentialHashData(c, c.proof)).toString('hex'),
+  credential_subject: c.credentialSubject
+});
+const credential = [
+  { id: 'credential-transmit-licence', signer_seed_hex: signerSeed, authorization: licenceFields, created: '2026-01-01T00:00:00.000Z', at: '2027-01-01T00:00:00.000Z', expected: pickCredential(credentialTransmit) },
+  { id: 'credential-receive-explicit-id', signer_seed_hex: signerSeed, authorization: receiveFields, created: '2026-01-02T00:00:00.000Z', credential_id: 'urn:example:credential:receive-1', at: '2026-06-01T00:00:00.000Z', expected: pickCredential(credentialReceive) },
+  { id: 'authorization-regulator-issued-binds', authorization_record: regulatorRecord, at: '2028-01-01T00:00:00.000Z', expected: { verified: true, issuer: signer.did } }
+];
+const credentialAt = { at: '2027-01-01T00:00:00.000Z' };
+const credentialRejections = [
+  { id: 'credential-subject-tampered', kind: 'credential', object: { ...credentialTransmit, credentialSubject: { ...credentialTransmit.credentialSubject, max_eirp_dbw: 30 } }, options: credentialAt },
+  { id: 'credential-issuer-swapped', kind: 'credential', object: { ...credentialTransmit, issuer: otherDid }, options: credentialAt },
+  { id: 'credential-proof-value-corrupted', kind: 'credential', object: { ...credentialTransmit, proof: { ...credentialTransmit.proof, proofValue: `${credentialTransmit.proof.proofValue.slice(0, -2)}11` } }, options: credentialAt },
+  { id: 'credential-cryptosuite-unknown', kind: 'credential', object: { ...credentialTransmit, proof: { ...credentialTransmit.proof, cryptosuite: 'eddsa-rdfc-2022' } }, options: credentialAt },
+  { id: 'credential-proof-created-not-utc', kind: 'credential', object: { ...credentialTransmit, proof: { ...credentialTransmit.proof, created: '2026-01-01T05:30:00+05:30' } }, options: credentialAt },
+  { id: 'credential-expired', kind: 'credential', object: credentialTransmit, options: { at: '2031-06-01T00:00:00.000Z' } },
+  { id: 'credential-not-yet-valid', kind: 'credential', object: credentialTransmit, options: { at: '2025-06-01T00:00:00.000Z' } },
+  { id: 'credential-expected-issuer-other', kind: 'credential', object: credentialTransmit, options: { ...credentialAt, expected_issuer: otherDid } },
+  { id: 'authorization-band-widened', kind: 'authorization', object: { ...regulatorRecord, bands: [...regulatorRecord.bands, { lower_hz: 1240000000, upper_hz: 1300000000, service: 'amateur' }] }, options: credentialAt },
+  { id: 'authorization-controller-not-issuer', kind: 'authorization', object: { ...regulatorRecord, controller_id: otherDid }, options: credentialAt },
+  { id: 'authorization-proof-missing', kind: 'authorization', object: { ...regulatorRecord, proof: null }, options: credentialAt },
+  { id: 'authorization-subject-swapped', kind: 'authorization', object: { ...regulatorRecord, subject_id: 'station_other' }, options: credentialAt }
+];
+
 const vectors = {
   vectors_version: VECTORS_VERSION,
-  generated_at: '2026-10-17T00:00:00.000Z',
+  generated_at: '2026-10-27T00:00:00.000Z',
   notes: [
     'canonical_json follows RFC 8785 for all JSON values; inputs are stored with their original key order so unsorted serializers fail.',
     'hash_payload references always cover canonical JSON: a string payload is hashed as the JSON string, never as raw text.',
     'ed25519 vectors are RFC 8032 section 7.1 tests 1 and 2.',
     'did_key framing is multicodec ed25519-pub (0xed 0x01) + base58btc with multibase prefix z; both directions are checked.',
     'envelope and receipt signatures are deterministic: an independent implementation must reproduce them byte for byte.',
+    'credential vectors are W3C Verifiable Credentials (Data Model 2.0) secured with the eddsa-jcs-2022 Data Integrity cryptosuite: hash_data is sha256(canonical proof options with the document context) followed by sha256(canonical document without proof); proofValue is the multibase base58btc Ed25519 signature; the authorization case binds a record to its credential.',
     'rejections are objects a conforming verifier must report as verified=false.',
     'An implementation conforms only when every suite passes and none is skipped.'
   ],
@@ -282,7 +333,8 @@ const vectors = {
   ed25519,
   envelope,
   receipt,
-  rejections
+  credential,
+  rejections: [...rejections, ...credentialRejections]
 };
 
 const outPath = path.join(here, 'vectors.json');
