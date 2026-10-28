@@ -4,6 +4,12 @@ Reference primitives for the Frontier State Protocol (FSP): canonical JSON, hash
 
 Everything here is deterministic and dependency-free (Node 20+, built-in `crypto` only). Published conformance vectors let any other implementation, in any language, prove it produces the same bytes.
 
+```
+npm install @iricity/frontier-shared
+```
+
+The Python implementation, `iricity-frontier-shared` on PyPI, passes the same vectors.
+
 ## What it provides
 
 | Area | Exports | Standard it follows |
@@ -62,7 +68,7 @@ const licence = createRegulatorIssuedAuthorization({
 verifyAuthorizationCredential(licence);   // { verified: true, issuer: 'did:key:z6Mk…', checks: [...] }
 ```
 
-The record names the regulator's `did:key` as `controller_id`; verification binds the credential to that issuer and to every attested field of the record, so neither can be changed after issue. `issueAuthorizationCredential` and `verifyCredential` expose the credential layer on its own. Credential test vectors join the conformance set in the next vector version, together with the Python implementation.
+The record names the regulator's `did:key` as `controller_id`; verification binds the credential to that issuer and to every attested field of the record, so neither can be changed after issue. `issueAuthorizationCredential` and `verifyCredential` expose the credential layer on its own. The `credential` suite of the conformance vectors (version 3) pins issued credentials byte for byte, and the Python implementation passes it.
 
 ## Conformance
 
@@ -94,7 +100,7 @@ This package holds primitives only. It does not persist keys, run servers, or kn
 
 ## Releasing
 
-See [docs/RELEASE_PLAYBOOK.md](docs/RELEASE_PLAYBOOK.md): the 0.1 freeze checklist, the one-time manual npm publish, trusted publishing through GitHub Actions, moving consumers off the vendored tarball, and the Python implementation that proves the vectors are portable.
+See [docs/RELEASE_PLAYBOOK.md](docs/RELEASE_PLAYBOOK.md): the 0.1 freeze checklist, the 0.1 freeze checklist, trusted publishing through GitHub Actions (every release is a `v<version>` tag), and the Python implementation that proves the vectors are portable.
 
 ## License
 

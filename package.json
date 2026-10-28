@@ -1,6 +1,6 @@
 {
   "name": "@iricity/frontier-shared",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Canonical JSON, hashing, ed25519 identity, signed envelopes, signed receipt chains and state-record constructors shared by the frontier stacks. Reference primitives for the state protocol, with published conformance vectors.",
   "license": "Apache-2.0",
   "type": "module",

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.1 - 2026-10-28
+
+- First release through the trusted publisher: published from GitHub Actions with provenance. README: install line, the Python implementation on PyPI, credential vectors are in version 3. No code change.
+
 ## 0.5.0 - 2026-10-27
 
 - Conformance vectors version 3 (75 cases, nine suites): a `credential` suite pins issued credentials byte for byte (ids, verification methods, proof values, hash inputs) and binds a regulator-issued authorization to its credential; twelve new rejections cover tampered subjects, swapped issuers, corrupted proof values, unknown cryptosuites, offsets in proof timestamps, expiry, premature use, widened bands, foreign controllers and missing proofs. The runner accepts `issueAuthorizationCredential`, `verifyCredential`, `credentialHashData` and `verifyAuthorizationCredential` from an implementation under test.
