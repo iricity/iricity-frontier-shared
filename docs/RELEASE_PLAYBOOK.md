@@ -25,7 +25,7 @@ Semantic versioning. The first published version of both implementations is `0.5
 - `1.0.0`: the first version published after `spec-v1.0.0` is tagged. Not before.
 - Python and JavaScript carry the same major and minor; patch numbers may differ.
 
-## 2. First npm publish (one time, manual, from the `iricity` npm account)
+## 2. First npm publish (done 2026-10-28: 0.5.0 by hand from the `iricity` account; 0.5.1 through the trusted publisher with provenance)
 
 npm trusted publishing can only be attached to a package that already exists, so the first version is published by hand. Everything after that goes through GitHub Actions. Order on the day: fresh public repositories first (section 0, last line), then this publish, then the trusted publisher (section 3), then the tag.
 
@@ -55,7 +55,7 @@ npm trusted publishing can only be attached to a package that already exists, so
    ```
 5. Tag the commit `v<version>` from your machine and push the tag. The publish workflow is tag-triggered and no-ops on a version that already exists. (Tags created by a workflow with the default token do not trigger other workflows, which is why there is no tag-creating workflow in this repository.)
 
-## 3. Set up trusted publishing (so no token ever lives on a laptop or in a secret)
+## 3. Set up trusted publishing (done 2026-10-28 for npm and PyPI; kept for reference)
 
 1. On npmjs.com, open the package page, Settings, Trusted Publisher, Add GitHub Actions.
 2. Organization or user: `iricity`. Repository: `iricity-frontier-shared`. Workflow filename: `publish.yml`. Environment: `npm`.
